@@ -17,7 +17,6 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 Bgrect = Background.get_rect()
 clock = pygame.time.Clock()
 
-
 gameover = False
 
 class Player(pygame.sprite.Sprite):
@@ -34,7 +33,6 @@ class Player(pygame.sprite.Sprite):
         self.gravity = 25
         self.speed = 0
 
-
     def update(self):
         if self.speed != 0:
             if self.speed > 0:
@@ -45,10 +43,8 @@ class Player(pygame.sprite.Sprite):
         if self.rect.y - self.gravity > HEIGHT/3:
             self.rect.y -= self.gravity
         else:
-            for rock in rocks.sprites():
-                rock.rect.y += self.gravity
-            for mob in mobs.sprites():
-                mob.rect.y += self.gravity
+            for sprite in all_sprites.sprites():
+                sprite.rect.y += self.gravity
 
         key = pygame.key.get_pressed()
 
@@ -77,25 +73,26 @@ class Rock(pygame.sprite.Sprite):
             self.mob = Mob(x,y)
             mobs.add(self.mob)
             all_sprites.add(self.mob)
-
+        elif rdi == 2:
+            self.spring = Spring(x,y)
+            springs.add(self.spring)
+            all_sprites.add(self.spring)
 
     def update(self):
         self.rect.x += self.speed
         self.rect.x = self.rect.x % WIDTH
 
         if self.rect.top > HEIGHT:
-            self.make = 0
-            self.rand = random.randint(0,2)
-            while self.rand > 0:
+            while True:
                 rx = random.randint(50,430)
-                ry = random.randint(-550,0)
+                ry = random.randint(-150,-5)
                 rock = Rock(rx,ry)
+                rock.rect = rock.rect.inflate(0,80)
                 if not pygame.sprite.spritecollide(rock,rocks,False):
+                    rock.rect = rock.rect.inflate(0,-80)
                     rocks.add(rock)
                     all_sprites.add(rock)
-                    self.make += 1
-                    if self.make == self.rand:
-                        break
+                    break
                 else:
                     rock.kill()
             self.kill()
@@ -105,8 +102,11 @@ class Rock(pygame.sprite.Sprite):
             self.mob.kill()
         except:
             pass
+        try:
+            self.spring.kill()
+        except:
+            pass
         super().kill()
-
 
 class Mob(pygame.sprite.Sprite):
 
@@ -124,25 +124,44 @@ class Mob(pygame.sprite.Sprite):
         if self.rect.top > HEIGHT:
             self.kill()
 
+class Spring(pygame.sprite.Sprite):
+
+    image = pygame.image.load("Spring.png")
+
+    def __init__(self,x,y):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = Spring.image
+        self.image.set_colorkey(BLACK)
+        self.rect = self.image.get_rect()
+        self.rect.centerx = x
+        self.rect.centery = y - 15
+
+    def update(self):
+        if self.rect.top > HEIGHT:
+            self.kill()
+
 all_sprites = pygame.sprite.Group()
 players = pygame.sprite.Group()
 
 rocks = pygame.sprite.Group()
 mobs = pygame.sprite.Group()
+springs = pygame.sprite.Group()
 
-for _ in range(15):
+for _ in range(10):
     while True:
         rx = random.randint(50,430)
         ry = random.randint(50,450)
         rock = Rock(rx,ry)
+        rock.rect = rock.rect.inflate(0,80)
         if not pygame.sprite.spritecollide(rock,rocks,False):
+            rock.rect = rock.rect.inflate(0,-80)
             rocks.add(rock)
             all_sprites.add(rock)
             break
         else:
             rock.kill()
+
 player = Player()
-all_sprites.add(player)
 players.add(player)
 
 stop = True
@@ -160,7 +179,7 @@ while not gameover:
                 
     if not stop:
         all_sprites.update()
-
+        players.update()
 
     if pygame.sprite.spritecollide(player,rocks,False):
         if player.gravity < -7:
@@ -169,17 +188,18 @@ while not gameover:
     if pygame.sprite.spritecollide(player,mobs,False):
         gameover = True
 
+    if pygame.sprite.spritecollide(player,springs,False):
+        if player.gravity < -2:
+            player.gravity = 45
+
     if player.rect.top > HEIGHT:
         gameover = True
 
     screen.fill(BLACK)
     screen.blit(Background,Bgrect)
 
-
-    rocks.draw(screen)
-    mobs.draw(screen)
+    all_sprites.draw(screen)
     players.draw(screen)
-
 
     pygame.display.flip()
 
