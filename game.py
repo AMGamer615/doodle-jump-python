@@ -22,11 +22,11 @@ gameover = False
 
 class Player(pygame.sprite.Sprite):
 
-    png = pygame.image.load("Player.png")
+    player_img = pygame.image.load("Player.png")
 
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.transform.scale(Player.png,(HEIGHT/8,HEIGHT/8))
+        self.image = pygame.transform.scale(Player.player_img,(HEIGHT/8,HEIGHT/8))
         self.image.set_colorkey(BLACK)
         self.rect = self.image.get_rect()
         self.rect.centerx = WIDTH / 2
@@ -45,8 +45,10 @@ class Player(pygame.sprite.Sprite):
         if self.rect.y - self.gravity > HEIGHT/3:
             self.rect.y -= self.gravity
         else:
-            for i in rocks.sprites():
-                i.rect.y += self.gravity
+            for rock in rocks.sprites():
+                rock.rect.y += self.gravity
+            for mob in mobs.sprites():
+                mob.rect.y += self.gravity
 
         key = pygame.key.get_pressed()
 
@@ -60,16 +62,22 @@ class Player(pygame.sprite.Sprite):
 
 class Rock(pygame.sprite.Sprite):
 
-    png = pygame.image.load("Rock.png")
+    image = pygame.image.load("Rock.png")
 
     def __init__(self,x,y):
         pygame.sprite.Sprite.__init__(self)
-        self.image = Rock.png
+        self.image = Rock.image
         self.image.set_colorkey(BLACK)
         self.rect = self.image.get_rect()
         self.rect.centerx = x
         self.rect.centery = y
         self.speed = 0
+        rdi = random.randint(1,200)
+        if rdi == 1:
+            self.mob = Mob(x,y)
+            mobs.add(self.mob)
+            all_sprites.add(self.mob)
+
 
     def update(self):
         self.rect.x += self.speed
@@ -77,25 +85,51 @@ class Rock(pygame.sprite.Sprite):
 
         if self.rect.top > HEIGHT:
             self.make = 0
-            self.rand = random.randint(1,2)
+            self.rand = random.randint(0,2)
             while self.rand > 0:
                 rx = random.randint(50,430)
                 ry = random.randint(-550,0)
                 rock = Rock(rx,ry)
-                if not pygame.sprite.spritecollide(rock,rocks,True):
+                if not pygame.sprite.spritecollide(rock,rocks,False):
                     rocks.add(rock)
                     all_sprites.add(rock)
                     self.make += 1
                     if self.make == self.rand:
                         break
+                else:
+                    rock.kill()
             self.kill()
 
+    def kill(self):
+        try:
+            self.mob.kill()
+        except:
+            pass
+        super().kill()
 
+
+class Mob(pygame.sprite.Sprite):
+
+    image = pygame.image.load("Mob.png")
+
+    def __init__(self,x,y):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.transform.scale(Mob.image,(HEIGHT/8,HEIGHT/8))
+        self.image.set_colorkey(BLACK)
+        self.rect = self.image.get_rect()
+        self.rect.centerx = x
+        self.rect.centery = y - 40
+
+    def update(self):
+        if self.rect.top > HEIGHT:
+            self.kill()
 
 all_sprites = pygame.sprite.Group()
 players = pygame.sprite.Group()
 
 rocks = pygame.sprite.Group()
+mobs = pygame.sprite.Group()
+
 for _ in range(15):
     while True:
         rx = random.randint(50,430)
@@ -105,6 +139,8 @@ for _ in range(15):
             rocks.add(rock)
             all_sprites.add(rock)
             break
+        else:
+            rock.kill()
 player = Player()
 all_sprites.add(player)
 players.add(player)
@@ -127,21 +163,23 @@ while not gameover:
 
 
     if pygame.sprite.spritecollide(player,rocks,False):
-        if player.gravity < -5:
+        if player.gravity < -7:
             player.gravity = 25
 
-    if player.rect.top > HEIGHT:
-        player.kill()
+    if pygame.sprite.spritecollide(player,mobs,False):
         gameover = True
 
-
+    if player.rect.top > HEIGHT:
+        gameover = True
 
     screen.fill(BLACK)
     screen.blit(Background,Bgrect)
 
 
     rocks.draw(screen)
+    mobs.draw(screen)
     players.draw(screen)
+
 
     pygame.display.flip()
 
